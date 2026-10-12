@@ -1,0 +1,271 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Benalmádena: forecast accuracy and sea temperature</title>
+<style>
+:root{--bg:#f6f8fa;--card:#fff;--fg:#1b2430;--mut:#5b6675;--line:#d5dce4;--acc:#0b63c5}
+@media (prefers-color-scheme:dark){:root{--bg:#10151c;--card:#19212b;--fg:#e6ebf1;--mut:#9aa7b6;--line:#2c3744;--acc:#6db3ff}}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--fg);font:16px/1.5 system-ui,-apple-system,Segoe UI,Roboto,sans-serif}
+main{max-width:860px;margin:0 auto;padding:16px}
+h1{font-size:1.4rem;margin:.3em 0}h2{font-size:1.15rem;margin:0 0 .6em}
+section{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:16px;margin:16px 0}
+.ctl{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:10px}
+label{font-weight:600}
+input,button{font:inherit;padding:6px 10px;border:1px solid var(--line);border-radius:6px;background:var(--bg);color:var(--fg)}
+button{cursor:pointer}button:disabled{opacity:.4;cursor:default}
+.scroll{overflow-x:auto}
+table{border-collapse:collapse;width:100%;min-width:560px}
+th,td{padding:8px;border-bottom:1px solid var(--line);text-align:left}
+th{color:var(--mut);font-weight:600}
+.mut,.note{color:var(--mut)}.note{font-size:.88rem}
+.err{color:#b3261e;font-weight:600}@media (prefers-color-scheme:dark){.err{color:#ff8a80}}
+.demo{background:#fff3c4;color:#4a3b00;padding:6px 10px;border-radius:6px;margin-bottom:8px}
+p{margin:.4em 0}footer{font-size:.85rem;color:var(--mut);margin:12px 0 24px}
+</style>
+</head>
+<body>
+<main>
+<h1>Benalmádena: forecast accuracy and sea temperature</h1>
+<div id="demoBanner"></div>
+
+<section aria-labelledby="h-w">
+  <h2 id="h-w">Weather forecast history</h2>
+  <div class="ctl">
+    <button id="prev" type="button" aria-label="Previous day">&larr; Previous day</button>
+    <label for="date">Target date</label>
+    <input id="date" type="date">
+    <button id="next" type="button" aria-label="Next day">Next day &rarr;</button>
+  </div>
+  <p id="dateLabel"><strong></strong></p>
+  <div id="wOut"></div>
+  <p class="note">All values refer to about 15:00 Madrid time on the target date. Forecasts come from OpenWeatherMap's 3-hourly forecast (the slot nearest 15:00 local). "Actual" is the observation taken when the collector ran (about 15:00 local), not a daily average.</p>
+</section>
+
+<section aria-labelledby="h-s">
+  <h2 id="h-s">Water temperature</h2>
+  <div id="sOut"></div>
+  <p class="note">Satellite: Copernicus Marine Mediterranean high-resolution L4 SST (near real time), a night-time, gap-free analysis, i.e. an estimate from satellite infrared data (mean of sea cells within 2 km of the swimming point), not an in-water measurement. Buoy: Málaga coastal buoy (Puertos del Estado, station 1514); the daily value is the 06:00 UTC reading, and hourly readings appear about 33 minutes after the hour.</p>
+</section>
+
+<p class="note" id="asOf"></p>
+<footer>Credits: E.U. Copernicus Marine Service, CNR-ISMAR (satellite); Puertos del Estado, portus.puertos.es (buoy); OpenWeatherMap (weather).</footer>
+</main>
+
+<script>
+"use strict";
+const REPO = "https://raw.githubusercontent.com/jezisko11/actual-web-data/main/";
+const FILES = {
+  weather: {path: "data/weather_log.csv", need: ["timestamp_utc", "date_utc"]},
+  sea:     {path: "sea_temp_log.csv",     need: ["date"]},
+  buoy:    {path: "buoy_hourly.csv",      need: ["reading_time_utc", "temp_c"]}
+};
+const DEMO = new URLSearchParams(location.search).get("demo") === "1";
+const DEMO_TODAY = "2026-10-12";
+
+/* ---------- helpers ---------- */
+function parseCSV(t) {
+  t = t.replace(/^\uFEFF/, "");
+  const rows = []; let row = [], f = "", q = false;
+  for (let i = 0; i < t.length; i++) {
+    const c = t[i];
+    if (q) {
+      if (c === '"') { if (t[i + 1] === '"') { f += '"'; i++; } else q = false; }
+      else f += c;
+    } else if (c === '"') q = true;
+    else if (c === ",") { row.push(f); f = ""; }
+    else if (c === "\n" || c === "\r") {
+      if (c === "\r" && t[i + 1] === "\n") i++;
+      row.push(f); rows.push(row); row = []; f = "";
+    } else f += c;
+  }
+  if (f !== "" || row.length) { row.push(f); rows.push(row); }
+  const clean = rows.filter(r => !(r.length === 1 && r[0].trim() === ""));
+  if (!clean.length) return {headers: [], rows: []};
+  const headers = clean[0].map(h => h.trim());
+  return {headers, rows: clean.slice(1).map(r => {
+    const o = {}; headers.forEach((h, i) => o[h] = (r[i] === undefined ? "" : r[i]).trim()); return o;
+  })};
+}
+const esc = s => String(s).replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const num = v => { if (v == null) return null; v = String(v).trim(); if (v === "" || v.toUpperCase() === "N/A") return null; const n = Number(v); return isFinite(n) ? n : null; };
+const txt = v => { if (v == null) return null; v = String(v).trim(); return (v === "" || v.toUpperCase() === "N/A") ? null : v; };
+const MADRID = new Intl.DateTimeFormat("en-GB", {timeZone: "Europe/Madrid", year: "numeric", month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit", hourCycle: "h23"});
+function madrid(d) {
+  const o = {}; MADRID.formatToParts(d).forEach(p => o[p.type] = p.value);
+  return {date: `${o.year}-${o.month}-${o.day}`, time: `${o.hour}:${o.minute}`};
+}
+const utcMs = s => { const [y, m, d] = s.split("-").map(Number); return Date.UTC(y, m - 1, d); };
+const addDays = (s, n) => new Date(utcMs(s) + n * 864e5).toISOString().slice(0, 10);
+const dayDiff = (a, b) => Math.round((utcMs(b) - utcMs(a)) / 864e5);
+const MON = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+const shortDate = s => `${Number(s.slice(8, 10))} ${MON[Number(s.slice(5, 7)) - 1]}`;
+const longDate = s => new Date(utcMs(s)).toLocaleDateString("en-GB", {timeZone: "UTC", weekday: "long", day: "numeric", month: "long", year: "numeric"});
+const parseUTC = s => new Date(s.trim().replace(" ", "T") + (s.trim().length <= 16 ? ":00Z" : "Z"));
+function change(a, b) {
+  const d = a - b, r = Math.round(Number((Math.abs(d) * 10).toFixed(6)));
+  return (d < 0 && r !== 0 ? "-" : "+") + (r / 10).toFixed(1) + " °C";
+}
+const todayStr = () => DEMO ? DEMO_TODAY : madrid(new Date()).date;
+
+/* ---------- demo data ---------- */
+const W_HEAD = "timestamp_utc,date_utc,f3_temp_c,f3_weather,f3_wind_kn,f3_wind_dir,f2_temp_c,f2_weather,f2_wind_kn,f2_wind_dir,f1_temp_c,f1_weather,f1_wind_kn,f1_wind_dir,actual_temp_c,actual_weather,actual_wind_kn,actual_wind_dir";
+const DEMO_CSV = {
+  weather: [W_HEAD,
+    "2026-10-08 13:00:00,2026-10-08,24.0,Clear,8.0,E,24.5,Clouds,9.0,E,25.0,Clear,7.0,SE,24.1,Clear,8.0,E",
+    "2026-10-09 11:00:00,2026-10-09,99.9,Rain,1.0,N,99.9,Rain,1.0,N,99.9,Rain,1.0,N,99.9,Rain,1.0,N",
+    "2026-10-09 13:05:00,2026-10-09,25.8,Clear,8.5,SE,25.6,Clear,7.8,SE,25.2,Clear,6.3,SE,24.9,Clear,7.0,SE",
+    "2026-10-11 13:02:00,2026-10-11,25.0,Clear,7.0,SE,24.9,Clouds,6.0,S,N/A,N/A,N/A,N/A,24.0,Clouds,5.5,S",
+    "2026-10-12 13:01:00,2026-10-12,24.2,Clouds,6.0,S,24.6,Clear,5.0,SW,24.7,Clear,4.0,W,24.8,Clear,9.0,N/A", ""].join("\r\n"),
+  sea: ["date,sat_mean_c,sat_nearest_c,sat_map_time_local,sat_fetched_at_local,buoy_time_local,buoy_temp_c",
+    "2026-10-08,22.6,22.7,2026-10-08 02:00,2026-10-08 14:00,2026-10-08 08:00,22.5",
+    "2026-10-09,22.7,22.8,2026-10-09 02:00,2026-10-09 14:00,,",
+    "2026-10-10,,,,,2026-10-10 08:00,22.9",
+    "2026-10-11,22.8,22.8,2026-10-11 02:00,2026-10-11 14:10,,",
+    "2026-10-12,,,,,2026-10-12 08:00,22.8", ""].join("\r\n"),
+  buoy: ["reading_time_utc,reading_time_local,temp_c,first_seen_at_local",
+    "2026-10-12 12:00,2026-10-12 14:00,22.9,2026-10-12 14:33",
+    "2026-10-12 13:00,2026-10-12 15:00,23.0,2026-10-12 15:34", ""].join("\r\n")
+};
+
+/* ---------- loading ---------- */
+async function getText(url) {
+  const r = await fetch(url, {cache: "no-store"});
+  if (!r.ok) throw new Error("HTTP " + r.status);
+  return r.text();
+}
+async function load(key) {
+  const {path, need} = FILES[key];
+  if (DEMO) return {data: parseCSV(DEMO_CSV[key]), src: "demo data"};
+  const attempts = [["raw.githubusercontent.com", REPO + path], ["same-origin copy", path]];
+  const errs = [];
+  for (const [name, base] of attempts) {
+    try {
+      const p = parseCSV(await getText(base + "?t=" + Date.now()));
+      const miss = need.filter(h => !p.headers.includes(h));
+      if (miss.length) throw new Error("missing column(s): " + miss.join(", "));
+      return {data: p, src: name};
+    } catch (e) { errs.push(name + ": " + (e.message || e)); }
+  }
+  return {error: errs.join(" | ")};
+}
+
+/* ---------- section 1 ---------- */
+let latestByDate = {}, minDate, maxDate;
+function buildWeather(rows) {
+  latestByDate = {};
+  rows.forEach(r => {
+    const d = r.date_utc; if (!/^\d{4}-\d{2}-\d{2}$/.test(d)) return;
+    if (!latestByDate[d] || r.timestamp_utc > latestByDate[d].timestamp_utc) latestByDate[d] = r;
+  });
+  const ds = Object.keys(latestByDate).sort();
+  minDate = ds[0]; maxDate = ds.length ? addDays(ds[ds.length - 1], 3) : null;
+}
+const WROWS = [[3, "f3", "3 days ago the weather forecast for this day was:"], [2, "f2", "2 days ago the weather forecast for this day was:"],
+               [1, "f1", "1 day ago the weather forecast for this day was:"], [0, "actual", "Actual data for this day:"]];
+function renderWeather(T) {
+  document.querySelector("#dateLabel strong").textContent = longDate(T);
+  const out = [];
+  WROWS.forEach(([n, p, desc]) => {
+    const rec = latestByDate[addDays(T, -n)]; if (!rec) return;
+    const t = num(rec[p + "_temp_c"]), w = txt(rec[p + "_weather"]), s = num(rec[p + "_wind_kn"]), d = txt(rec[p + "_wind_dir"]);
+    if (t === null && w === null && s === null && d === null) return;
+    out.push(`<tr><th scope="row">${desc}</th><td>${t === null ? "–" : t.toFixed(1) + " °C"}</td><td>${w === null ? "–" : esc(w)}</td><td>${s === null ? "–" : s.toFixed(1) + " kn"}</td><td>${d === null ? "–" : esc(d)}</td></tr>`);
+  });
+  document.getElementById("wOut").innerHTML = out.length
+    ? `<div class="scroll"><table><thead><tr><th>Description</th><th>Temperature</th><th>Weather</th><th>Wind Speed</th><th>Wind Direction</th></tr></thead><tbody>${out.join("")}</tbody></table></div>`
+    : `<p class="mut">No records for this date.</p>`;
+}
+function setupPicker() {
+  const inp = document.getElementById("date"), prev = document.getElementById("prev"), next = document.getElementById("next");
+  inp.min = minDate; inp.max = maxDate;
+  const clamp = d => d < minDate ? minDate : d > maxDate ? maxDate : d;
+  const show = d => {
+    d = clamp(d); inp.value = d;
+    prev.disabled = d <= minDate; next.disabled = d >= maxDate; renderWeather(d);
+  };
+  inp.addEventListener("change", () => { if (/^\d{4}-\d{2}-\d{2}$/.test(inp.value)) show(inp.value); else show(todayStr()); });
+  prev.onclick = () => show(addDays(inp.value, -1));
+  next.onclick = () => show(addDays(inp.value, 1));
+  show(todayStr());
+}
+
+/* ---------- section 2 ---------- */
+function renderSea(sea, buoy) {
+  const today = todayStr(), lines = [];
+  const mut = s => `<p class="mut">${s}</p>`;
+  const gapNote = (a, b) => dayDiff(a, b) > 1 ? ` (vs ${a})` : "";
+
+  // satellite
+  if (!sea) lines.push(mut("Satellite: not available."));
+  else {
+    const rs = sea.rows.filter(r => num(r.sat_mean_c) !== null && /^\d{4}-\d{2}-\d{2}$/.test(r.date)).sort((a, b) => a.date < b.date ? -1 : 1);
+    if (!rs.length) lines.push(mut("Satellite: not available."));
+    else {
+      const l = rs[rs.length - 1], pv = rs[rs.length - 2], v = num(l.sat_mean_c);
+      const md = (txt(l.sat_map_time_local) || l.date).slice(0, 10);
+      const label = md === today ? "Satellite last night" : md === addDays(today, -1) ? "Satellite, night before last (yesterday's map)" : "Satellite, night of " + md;
+      const ch = pv ? ` Change: ${change(v, num(pv.sat_mean_c))}${gapNote(pv.date, l.date)}.` : "";
+      lines.push(`<p title="Night-time satellite estimate of sea-surface temperature (mean of sea cells within 2 km of the swimming point), not an in-water measurement.">${label}: ${v.toFixed(1)} °C.${ch}</p>`);
+    }
+  }
+  // buoy morning
+  if (!sea) lines.push(mut("Málaga buoy, daily morning reading: not available."));
+  else {
+    const rb = sea.rows.filter(r => num(r.buoy_temp_c) !== null && txt(r.buoy_time_local)).sort((a, b) => a.date < b.date ? -1 : 1);
+    const l = rb[rb.length - 1];
+    if (!l) lines.push(mut("Málaga buoy, daily morning reading: not available."));
+    else {
+      const bd = l.buoy_time_local.slice(0, 10), bt = l.buoy_time_local.slice(11, 16);
+      if (bd !== today) lines.push(mut(`Málaga buoy today at ${bt} local: not yet available.`));
+      else {
+        const pv = rb[rb.length - 2], v = num(l.buoy_temp_c);
+        const ch = pv ? ` Change: ${change(v, num(pv.buoy_temp_c))}${gapNote(pv.date, l.date)}.` : "";
+        lines.push(`<p>Málaga buoy today at ${bt} local: ${v.toFixed(1)} °C.${ch}</p>`);
+      }
+    }
+  }
+  // buoy latest
+  const bh = buoy && buoy.rows.filter(r => num(r.temp_c) !== null && txt(r.reading_time_utc) && !isNaN(parseUTC(r.reading_time_utc)))
+                      .sort((a, b) => parseUTC(a.reading_time_utc) - parseUTC(b.reading_time_utc));
+  if (!bh || !bh.length) lines.push(mut("Málaga buoy latest reading: not available."));
+  else {
+    const l = bh[bh.length - 1], m = madrid(parseUTC(l.reading_time_utc));
+    const when = m.date === today ? `today at ${m.time} local` : `on ${shortDate(m.date)} at ${m.time} local`;
+    lines.push(`<p>Málaga buoy latest reading ${when}: ${num(l.temp_c).toFixed(1)} °C.</p>`);
+  }
+  document.getElementById("sOut").innerHTML = lines.join("");
+}
+
+/* ---------- main ---------- */
+(async function () {
+  if (DEMO) document.getElementById("demoBanner").innerHTML = `<div class="demo">Demo mode: built-in sample data, "today" is fixed to ${DEMO_TODAY}.</div>`;
+  const [w, s, b] = await Promise.all([load("weather"), load("sea"), load("buoy")]);
+  const srcs = [];
+  if (w.error) {
+    document.getElementById("wOut").innerHTML = `<p class="err">Could not load weather_log.csv (${esc(w.error)}).</p>`;
+    document.querySelector("#dateLabel").hidden = true;
+    ["prev", "next", "date"].forEach(i => document.getElementById(i).disabled = true);
+    srcs.push("weather: failed");
+  } else {
+    buildWeather(w.data.rows);
+    if (!maxDate) document.getElementById("wOut").innerHTML = `<p class="mut">No records in weather_log.csv yet.</p>`;
+    else setupPicker();
+    const last = w.data.rows.map(r => r.timestamp_utc).filter(Boolean).sort().pop();
+    let asof = "";
+    if (last && !isNaN(parseUTC(last))) { const m = madrid(parseUTC(last)); asof = `Data as of ${shortDate(m.date)} ${m.date.slice(0, 4)}, ${m.time} Madrid time (latest weather run). `; }
+    document.getElementById("asOf").dataset.asof = asof;
+    srcs.push("weather: " + w.src);
+  }
+  if (s.error) { renderSea(null, b.error ? null : b.data); }
+  else renderSea(s.data, b.error ? null : b.data);
+  srcs.push("sea temp: " + (s.error ? "failed" : s.src), "buoy: " + (b.error ? "failed" : b.src));
+  const el = document.getElementById("asOf");
+  el.textContent = (el.dataset.asof || "") + "Sources used: " + srcs.join("; ") + ".";
+  if (s.error || b.error) el.textContent += " Errors: " + [s.error && "sea_temp_log.csv " + s.error, b.error && "buoy_hourly.csv " + b.error].filter(Boolean).join(" | ");
+})();
+</script>
+</body>
+</html>
