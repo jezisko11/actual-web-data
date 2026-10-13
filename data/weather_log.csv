@@ -1,9 +1,4 @@
 timestamp_utc,date_utc,f3_temp_c,f3_weather,f3_wind_kn,f3_wind_dir,f2_temp_c,f2_weather,f2_wind_kn,f2_wind_dir,f1_temp_c,f1_weather,f1_wind_kn,f1_wind_dir,actual_temp_c,actual_weather,actual_wind_kn,actual_wind_dir
-2026-10-05 14:00:49,2026-10-05,26.3,Clear,5.5,ESE,27.4,Rain,5.2,NNW,25.6,Rain,3.8,ESE,24.4,Rain,7.0,ESE
-2026-10-06 14:00:49,2026-10-06,23.9,Rain,6.6,SE,26.6,Clear,4.7,ESE,25.3,Clouds,5.6,NNW,23.5,Clouds,8.0,E
-2026-10-07 14:00:46,2026-10-07,25.0,Clouds,4.2,SE,24.6,Clear,6.4,SE,27.9,Clouds,5.2,SE,26.0,Clouds,11.0,WNW
-2026-10-08 14:00:55,2026-10-08,25.4,Clouds,5.0,SSE,23.6,Rain,6.1,SE,26.8,Clear,5.2,SE,24.8,Clouds,8.0,SSE
-2026-10-09 14:00:53,2026-10-09,27.1,Clouds,5.3,SE,25.9,Clouds,3.8,S,22.9,Clouds,5.3,SE,25.1,Clear,10.0,ESE
-2026-10-10 14:00:51,2026-10-10,25.3,Clear,5.8,SE,27.6,Clear,4.8,SE,26.8,Clouds,3.5,S,25.1,Clouds,8.0,SE
-2026-10-11 14:00:56,2026-10-11,25.2,Rain,9.0,ESE,25.6,Clear,6.2,SE,28.4,Clear,4.5,SE,24.8,Clouds,11.0,S
-2026-10-12 14:00:58,2026-10-12,25.8,Clear,8.5,SE,25.6,Clear,7.8,SE,25.2,Clear,6.3,SE,24.8,Clear,9.0,SE
+2026-10-12 15:24:04,2026-10-12,25.8,Clear,10.4,SE,25.8,Clear,9.8,ESE,27.0,Clear,6.9,SE,25.1,Clouds,10.0,SE
+2026-10-12 19:24:12,2026-10-12,25.8,Clear,10.4,SE,25.8,Clear,9.8,ESE,27.0,Clear,6.9,SE,20.5,Clouds,4.0,SE
+2026-10-13 13:48:52,2026-10-13,26.8,Clouds,6.8,SE,25.6,Clear,10.4,SE,25.9,Clear,9.7,SE,24.8,Clear,9.0,SE
