@@ -336,95 +336,97 @@ function renderSea(sea, buoy) {
 <!-- 2. ⚙️ INSERTED JAVASCRIPT LOGIC RIGHT BEFORE CLOSING BODY TAG -->
 
 <script>
-    // Replace with your actual Google AI Studio API key.
-    // Do not publish this key in a public website.
-    const GEMINI_API_KEY = "AQ.Ab8RN6JDYR_1bKRlvLCHLtI7tV3XjLc9Wg5X91_VeKcV2WhEZQ";
+    // TEMPORARY TESTING ONLY.
+    // Insert your actual Google AI Studio API key here.
+    const GEMINI_API_KEY = "AQ.Ab8RN6IeU28z5fXNCJyK9o_BbUkCTo8GJ1ZyhEMHnwhTRbP4_A";
 
+    // Gemini API endpoint tested from PythonAnywhere.
     const API_URL =
         "https://generativelanguage.googleapis.com/v1beta/models/gemini-3.8-flash:generateContent";
 
+    async function askGemini() {
+        const inputField = document.getElementById("userInput");
+        const responseBox = document.getElementById("response");
+        const sendBtn = document.getElementById("sendBtn");
 
-async function askGemini() {
-    const inputField = document.getElementById("userInput");
-    const responseBox = document.getElementById("response");
-    const sendBtn = document.getElementById("sendBtn");
+        const promptText = inputField.value.trim();
 
-    const promptText = inputField.value.trim();
+        if (!promptText) {
+            responseBox.textContent = "Please enter a question.";
+            return;
+        }
 
-    if (!promptText) {
-        alert("Please enter a question first.");
-        return;
-    }
+        if (
+            !GEMINI_API_KEY ||
+            GEMINI_API_KEY === "YOUR_GEMINI_API_KEY_HERE"
+        ) {
+            responseBox.textContent =
+                "Please enter your Gemini API key in the script.";
+            return;
+        }
 
-    // Request the API key
-    const apiKey = prompt("Enter your Gemini API key:");
+        responseBox.textContent = "Thinking...";
+        responseBox.classList.add("loading");
+        sendBtn.disabled = true;
 
-    if (!apiKey || !apiKey.trim()) {
-        alert("No API key entered. Request cancelled.");
-        return;
-    }
-
-    // Ask for confirmation
-    const confirmed = confirm(
-        "Send your question to Gemini using the API key you entered?"
-    );
-
-    if (!confirmed) {
-        return;
-    }
-
-    const API_URL =
-        "https://generativelanguage.googleapis.com/v1beta/models/gemini-3.8-flash:generateContent";
-
-    sendBtn.disabled = true;
-    responseBox.textContent = "Thinking...";
-    responseBox.classList.add("loading");
-
-    try {
-        const response = await fetch(API_URL, {
-            method: "POST",
-            headers: {
-                "Content-Type": "application/json",
-                "x-goog-api-key": apiKey.trim()
-            },
-            body: JSON.stringify({
-                contents: [{
-                    parts: [{ text: promptText }]
+        const payload = {
+            contents: [{
+                parts: [{
+                    text: promptText
                 }]
-            })
-        });
+            }]
+        };
 
-        const data = await response.json();
+        try {
+            const response = await fetch(API_URL, {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                    "x-goog-api-key": GEMINI_API_KEY
+                },
+                body: JSON.stringify(payload)
+            });
 
-        if (!response.ok) {
-            throw new Error(
-                data.error?.message ||
-                `API error: ${response.status}`
-            );
+            const data = await response.json();
+
+            // Show Google's actual error message when available.
+            if (!response.ok) {
+                throw new Error(
+                    `HTTP ${response.status}: ` +
+                    (data.error?.message || response.statusText)
+                );
+            }
+
+            const aiReply = data.candidates
+                ?.flatMap(candidate =>
+                    candidate.content?.parts || []
+                )
+                .filter(part =>
+                    typeof part.text === "string"
+                )
+                .map(part => part.text)
+                .join("\n");
+
+            if (!aiReply) {
+                throw new Error(
+                    "No text returned. Finish reason: " +
+                    (data.candidates?.[0]?.finishReason || "unknown")
+                );
+            }
+
+            responseBox.textContent = aiReply;
+
+        } catch (error) {
+            console.error("Gemini request failed:", error);
+            responseBox.textContent =
+                "Error: " + error.message;
+        } finally {
+            responseBox.classList.remove("loading");
+            sendBtn.disabled = false;
         }
-
-        const aiReply = data.candidates
-            ?.flatMap(candidate => candidate.content?.parts || [])
-            .filter(part => typeof part.text === "string")
-            .map(part => part.text)
-            .join("\n");
-
-        if (!aiReply) {
-            throw new Error("Gemini returned no text response.");
-        }
-
-        responseBox.textContent = aiReply;
-
-    } catch (error) {
-        console.error("Gemini API error:", error);
-        responseBox.textContent = "Error: " + error.message;
-    } finally {
-        sendBtn.disabled = false;
-        responseBox.classList.remove("loading");
     }
-}
 
-
+    // Allow pressing Enter to submit.
     document.getElementById("userInput")
         .addEventListener("keydown", function(event) {
             if (event.key === "Enter") {
