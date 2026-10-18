@@ -4,81 +4,244 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Benalmádena: forecast accuracy and sea temperature</title>
+```html
 <style>
-:root{--bg:#f6f8fa;--card:#fff;--fg:#1b2430;--mut:#5b6675;--line:#d5dce4;--acc:#0b63c5}
-@media (prefers-color-scheme:dark){:root{--bg:#10151c;--card:#19212b;--fg:#e6ebf1;--mut:#9aa7b6;--line:#2c3744;--acc:#6db3ff}}
-*{box-sizing:border-box}
-body{margin:0;background:var(--bg);color:var(--fg);font:16px/1.5 system-ui,-apple-system,Segoe UI,Roboto,sans-serif}
-main{max-width:860px;margin:0 auto;padding:16px}
-h1{font-size:1.4rem;margin:.3em 0}h2{font-size:1.15rem;margin:0 0 .6em}
-section{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:16px;margin:16px 0}
-.ctl{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:10px}
-label{font-weight:600}
-input,button{font:inherit;padding:6px 10px;border:1px solid var(--line);border-radius:6px;background:var(--bg);color:var(--fg)}
-button{cursor:pointer}button:disabled{opacity:.4;cursor:default}
-.scroll{overflow-x:auto}
-table{border-collapse:collapse;width:100%;min-width:560px}
-th,td{padding:8px;border-bottom:1px solid var(--line);text-align:left}
-th{color:var(--mut);font-weight:600}
-.mut,.note{color:var(--mut)}.note{font-size:.88rem}
-.err{color:#b3261e;font-weight:600}@media (prefers-color-scheme:dark){.err{color:#ff8a80}}
-.demo{background:#fff3c4;color:#4a3b00;padding:6px 10px;border-radius:6px;margin-bottom:8px}
-p{margin:.4em 0}footer{font-size:.85rem;color:var(--mut);margin:12px 0 24px}
-/* --- ADD THESE CHAT STYLES INSIDE YOUR EXISTING STYLE TAGS --- */
-.ai-assistant-banner {
-    background-color: #f4f7f6;
-    padding: 20px;
-    border-bottom: 1px solid #e0e0e0;
-    display: flex;
-    justify-content: center;
+:root {
+    --bg: #f6f8fa;
+    --card: #fff;
+    --fg: #1b2430;
+    --mut: #5b6675;
+    --line: #d5dce4;
+    --acc: #0b63c5;
 }
-.chat-container {
-    width: 100%;
-    max-width: 800px; /* Aligns well with typical container layouts */
-    background: white;
-    border-radius: 8px;
-    box-shadow: 0 4px 12px rgba(0,0,0,0.08);
-    padding: 20px;
+
+@media (prefers-color-scheme: dark) {
+    :root {
+        --bg: #10151c;
+        --card: #19212b;
+        --fg: #e6ebf1;
+        --mut: #9aa7b6;
+        --line: #2c3744;
+        --acc: #6db3ff;
+    }
+}
+
+* {
     box-sizing: border-box;
 }
-.chat-container h3 { margin-top: 0; color: #333; font-family: sans-serif; }
+
+body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--fg);
+    font: 16px/1.5 system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
+}
+
+main {
+    max-width: 860px;
+    margin: 0 auto;
+    padding: 16px;
+}
+
+h1 {
+    font-size: 1.4rem;
+    margin: .3em 0;
+}
+
+h2 {
+    font-size: 1.15rem;
+    margin: 0 0 .6em;
+}
+
+section {
+    background: var(--card);
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    padding: 16px;
+    margin: 16px 0;
+}
+
+.ctl {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+    align-items: center;
+    margin-bottom: 10px;
+}
+
+label {
+    font-weight: 600;
+}
+
+input,
+button {
+    font: inherit;
+    padding: 6px 10px;
+    border: 1px solid var(--line);
+    border-radius: 6px;
+    background: var(--bg);
+    color: var(--fg);
+}
+
+button {
+    cursor: pointer;
+}
+
+button:disabled {
+    opacity: .4;
+    cursor: default;
+}
+
+.scroll {
+    overflow-x: auto;
+}
+
+table {
+    border-collapse: collapse;
+    width: 100%;
+    min-width: 560px;
+}
+
+th,
+td {
+    padding: 8px;
+    border-bottom: 1px solid var(--line);
+    text-align: left;
+}
+
+th {
+    color: var(--mut);
+    font-weight: 600;
+}
+
+.mut,
+.note {
+    color: var(--mut);
+}
+
+.note {
+    font-size: .88rem;
+}
+
+.err {
+    color: #b3261e;
+    font-weight: 600;
+}
+
+@media (prefers-color-scheme: dark) {
+    .err {
+        color: #ff8a80;
+    }
+}
+
+.demo {
+    background: #fff3c4;
+    color: #4a3b00;
+    padding: 6px 10px;
+    border-radius: 6px;
+    margin-bottom: 8px;
+}
+
+p {
+    margin: .4em 0;
+}
+
+footer {
+    font-size: .85rem;
+    color: var(--mut);
+    margin: 12px 0 24px;
+}
+
+/* Gemini AI assistant: inherit the main page design */
+
+.ai-assistant-banner {
+    background: var(--bg);
+    padding: 0;
+    margin: 16px 0;
+}
+
+.chat-container {
+    width: 100%;
+    max-width: none;
+    background: var(--card);
+    color: var(--fg);
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    box-shadow: none;
+    padding: 16px;
+}
+
+.chat-container h3 {
+    margin: 0 0 .6em;
+    color: var(--fg);
+    font: inherit;
+    font-weight: 600;
+}
+
 .input-group {
     display: flex;
-    gap: 10px;
-    margin-bottom: 15px;
+    gap: 8px;
+    flex-wrap: wrap;
+    align-items: center;
+    margin-bottom: 10px;
 }
-input[type="text"] {
-    flex: 1;
-    padding: 12px;
-    border: 1px solid #ccc;
-    border-radius: 4px;
-    font-size: 16px;
+
+.chat-container input[type="text"] {
+    flex: 1 1 220px;
+    min-width: 0;
+    width: 100%;
+    padding: 6px 10px;
+    border: 1px solid var(--line);
+    border-radius: 6px;
+    background: var(--bg);
+    color: var(--fg);
+    font: inherit;
 }
-button {
-    padding: 12px 24px;
-    background-color: #1a73e8;
-    color: white;
-    border: none;
-    border-radius: 4px;
-    cursor: pointer;
-    font-size: 16px;
-    font-weight: bold;
+
+.chat-container input[type="text"]::placeholder {
+    color: var(--mut);
 }
-button:hover { background-color: #1557b0; }
-button:disabled { background-color: #aaa; cursor: not-allowed; }
+
+.chat-container button {
+    padding: 6px 10px;
+    border: 1px solid var(--line);
+    border-radius: 6px;
+    background: var(--bg);
+    color: var(--fg);
+    font: inherit;
+    font-weight: 400;
+}
+
+.chat-container button:hover {
+    border-color: var(--acc);
+    color: var(--acc);
+}
+
+.chat-container button:disabled {
+    opacity: .4;
+    cursor: default;
+}
+
 .response-box {
-    padding: 15px;
-    background-color: #f9f9f9;
-    border-left: 4px solid #1a73e8;
-    border-radius: 4px;
+    padding: 12px;
+    background: var(--bg);
+    color: var(--fg);
+    border: 1px solid var(--line);
+    border-left: 3px solid var(--acc);
+    border-radius: 6px;
     min-height: 50px;
     max-height: 300px;
     overflow-y: auto;
     overflow-wrap: anywhere;
     white-space: pre-wrap;
 }
-.loading { color: #666; font-style: italic; }
+
+.loading {
+    color: var(--mut);
+    font-style: italic;
+}
 </style>
+```
 </head>
 <body>
 <main>
