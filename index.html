@@ -24,12 +24,78 @@ th{color:var(--mut);font-weight:600}
 .err{color:#b3261e;font-weight:600}@media (prefers-color-scheme:dark){.err{color:#ff8a80}}
 .demo{background:#fff3c4;color:#4a3b00;padding:6px 10px;border-radius:6px;margin-bottom:8px}
 p{margin:.4em 0}footer{font-size:.85rem;color:var(--mut);margin:12px 0 24px}
+/* --- ADD THESE CHAT STYLES INSIDE YOUR EXISTING STYLE TAGS --- */
+.ai-assistant-banner {
+    background-color: #f4f7f6;
+    padding: 20px;
+    border-bottom: 1px solid #e0e0e0;
+    display: flex;
+    justify-content: center;
+}
+.chat-container {
+    width: 100%;
+    max-width: 800px; /* Aligns well with typical container layouts */
+    background: white;
+    border-radius: 8px;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+    padding: 20px;
+    box-sizing: border-box;
+}
+.chat-container h3 { margin-top: 0; color: #333; font-family: sans-serif; }
+.input-group {
+    display: flex;
+    gap: 10px;
+    margin-bottom: 15px;
+}
+input[type="text"] {
+    flex: 1;
+    padding: 12px;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    font-size: 16px;
+}
+button {
+    padding: 12px 24px;
+    background-color: #1a73e8;
+    color: white;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 16px;
+    font-weight: bold;
+}
+button:hover { background-color: #1557b0; }
+button:disabled { background-color: #aaa; cursor: not-allowed; }
+.response-box {
+    padding: 15px;
+    background-color: #f9f9f9;
+    border-left: 4px solid #1a73e8;
+    border-radius: 4px;
+    min-height: 40px;
+    white-space: pre-wrap;
+    font-family: sans-serif;
+    color: #444;
+    line-height: 1.5;
+}
+.loading { color: #666; font-style: italic; }
 </style>
 </head>
 <body>
 <main>
 <h1>Benalmádena: forecast accuracy and sea temperature</h1>
 <div id="demoBanner"></div>
+
+<!-- 1. 📥 INSERTED CHAT WINDOW HTML EXACTLY HERE -->
+<div class="ai-assistant-banner">
+    <div class="chat-container">
+        <h3>Sailing Guide AI Assistant</h3>
+        <div class="input-group">
+            <input type="text" id="userInput" placeholder="Ask me anything... (e.g., Pizza Margherita ingredients or local sailing tips)" />
+            <button id="sendBtn" onclick="askGemini()">Ask</button>
+        </div>
+        <div id="response" class="response-box">How can I help you today?</div>
+    </div>
+</div>
 
 <section aria-labelledby="h-w">
   <h2 id="h-w">Weather forecast history</h2>
@@ -266,6 +332,59 @@ function renderSea(sea, buoy) {
   el.textContent = (el.dataset.asof || "") + "Sources used: " + srcs.join("; ") + ".";
   if (s.error || b.error) el.textContent += " Errors: " + [s.error && "sea_temp_log.csv " + s.error, b.error && "buoy_hourly.csv " + b.error].filter(Boolean).join(" | ");
 })();
+</script>
+<!-- 2. ⚙️ INSERTED JAVASCRIPT LOGIC RIGHT BEFORE CLOSING BODY TAG -->
+<script>
+    // 🔴 Paste your Google AI Studio API key here
+    const GEMINI_API_KEY = "AQ.Ab8RN6JDYR_1bKRlvLCHLtI7tV3XjLc9Wg5X91_VeKcV2WhEZQ"; 
+    const API_URL = `https://googleapis.com{GEMINI_API_KEY}`;
+
+    async function askGemini() {
+        const inputField = document.getElementById("userInput");
+        const responseBox = document.getElementById("response");
+        const sendBtn = document.getElementById("sendBtn");
+        
+        const promptText = inputField.value.trim();
+        if (!promptText) return;
+
+        responseBox.innerHTML = '<span class="loading">Thinking...</span>';
+        sendBtn.disabled = true;
+
+        const payload = {
+            contents: [{
+                parts: [{ text: promptText }]
+            }]
+        };
+
+        try {
+            const response = await fetch(API_URL, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify(payload)
+            });
+
+            if (!response.ok) {
+                throw new Error(`API Error: ${response.status}`);
+            }
+
+            const data = await response.json();
+            const aiReply = data.candidates[0].content.parts[0].text;
+            responseBox.innerText = aiReply;
+
+        } catch (error) {
+            console.error("Error:", error);
+            responseBox.innerHTML = `<span style="color: red;">Error processing your request. Please verify your API Key.</span>`;
+        } finally {
+            sendBtn.disabled = false;
+        }
+    }
+
+    // Trigger submission on pressing 'Enter' key
+    document.getElementById("userInput").addEventListener("keypress", function(event) {
+        if (event.key === "Enter") {
+            askGemini();
+        }
+    });
 </script>
 </body>
 </html>
