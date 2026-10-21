@@ -8,3 +8,4 @@ timestamp_utc,date_utc,f3_temp_c,f3_weather,f3_wind_kn,f3_wind_dir,f2_temp_c,f2_
 2026-10-18 20:25:52,2026-10-18,22.9,Clouds,7.4,NNW,22.8,Rain,1.4,E,22.0,Clouds,1.3,SE,19.4,Clouds,6.0,SE
 2026-10-19 13:32:25,2026-10-19,23.6,Clear,3.5,ESE,23.0,Clouds,9.2,NNW,24.6,Rain,0.8,E,22.2,Clouds,9.0,SE
 2026-10-20 13:29:46,2026-10-20,23.7,Clouds,10.8,NNW,22.7,Clear,6.8,SE,25.0,Clear,9.5,NNW,23.2,Clouds,2.6,SSW
+2026-10-21 13:29:15,2026-10-21,23.7,Clouds,4.8,SE,22.9,Clouds,12.8,NW,24.0,Clear,3.8,ESE,24.0,Clouds,12.0,WNW
