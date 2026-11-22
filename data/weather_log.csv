@@ -38,3 +38,4 @@ timestamp_utc,date_utc,f3_temp_c,f3_weather,f3_wind_kn,f3_wind_dir,f2_temp_c,f2_
 2026-11-19 14:01:15,2026-11-19,19.8,Clouds,10.3,NNW,20.6,Clouds,3.3,SE,20.2,Clouds,3.5,ESE,21.4,Clouds,14.0,NW
 2026-11-20 14:01:11,2026-11-20,18.2,Clear,6.1,ESE,19.4,Clear,10.4,NW,24.7,Clear,3.6,SE,18.3,Clear,7.0,ESE
 2026-11-21 14:01:05,2026-11-21,18.6,Clouds,5.6,SE,18.1,Clouds,5.8,SE,18.9,Clear,10.5,NW,18.2,Clear,6.0,ESE
+2026-11-22 14:01:05,2026-11-22,16.3,Clouds,11.8,NNW,19.5,Clouds,3.5,SE,19.0,Clear,5.8,ESE,18.9,Clear,22.0,WNW
